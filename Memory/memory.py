@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from .store import SQLiteStore
 from .context import ContextBuilder
-from .optimizer import ContextOptimizer
+from .optimizer import ContextOptimizer , Summarizer
 
 
 class ConversationMemory:
@@ -14,6 +14,7 @@ class ConversationMemory:
         store: SQLiteStore,
         builder: ContextBuilder,
         optimizer: ContextOptimizer,
+        summarizer: Summarizer,
         session_id: str | None = None,
     ):
 
@@ -26,6 +27,7 @@ class ConversationMemory:
             self.store.create_session(self.session_id)
         else:
             self.session_id = session_id
+        self.summarizer=summarizer
 
     # ---------- Session ----------
 
@@ -83,21 +85,48 @@ class ConversationMemory:
     def build_context(
         self,
         system_prompt: str,
-        current_user_message: str,
+        
     ):
         return self.builder.build(
             system_prompt=system_prompt,
             summary=self.get_summary(),
             messages=self.get_messages(),
-            current_user_message=current_user_message,
+            
         )
 
     # ---------- Optimization ----------
 
-    def optimize(self):
-        self.optimizer.optimize(self)
+    # def optimize(self,model, previous_summary,messages ):
+    #     self.summarizer.summarize(model, previous_summary,messages)
 
     # ---------- Utilities ----------
 
-    def delete_messages(self, ids: list[int]):
+    def optimize(self, model):
+
+        messages = self.store.get_messages(
+            self.session_id
+        )
+
+        if not self.optimizer.should_optimize(messages):
+            return
+
+        summarize, keep = self.optimizer.split_messages(messages)
+
+        previous_summary = self.store.get_summary(
+            self.session_id
+        )
+
+        updated_summary = self.summarizer.summarize(
+            model=model,
+            previous_summary=previous_summary,
+            messages=summarize,
+        )
+
+        self.store.save_summary(
+            self.session_id,
+            updated_summary,
+        )
+
+        ids = [msg.id for msg in summarize]
+
         self.store.delete_messages(ids)

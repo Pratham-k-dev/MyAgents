@@ -2,7 +2,7 @@ from CodeAgent.Tool_Agent import Toolagent
 from CodeAgent.llms.gemini_model import GeminiModel
 from CodeAgent.tools import BaseTool, ToolResult
 from dotenv import load_dotenv
-from CodeAgent.tools import WriteFileTool 
+from CodeAgent.tools import WriteFileTool,_tool
 from CodeAgent.Docker.sandbox import Workspace
 import streamlit as st
 
@@ -44,45 +44,66 @@ def streamlit_callback(event: AgentEvent):
     elif event.type == EventType.ERROR:
         st.error(event.data)
 
-class WeatherTool(BaseTool):
-    name = "get_weather"
-    description = "Returns the current weather for a city."
+# class WeatherTool(BaseTool):
+#     name = "get_weather"
+#     description = "Returns the current weather for a city."
 
-    parameters = {
-        "type": "object",
-        "properties": {
-            "city": {
-                "type": "string",
-                "description": "Name of the city."
-            }
-        },
-        "required": ["city"]
+#     parameters = {
+#         "type": "object",
+#         "properties": {
+#             "city": {
+#                 "type": "string",
+#                 "description": "Name of the city."
+#             }
+#         },
+#         "required": ["city"]
+#     }
+
+#     def execute(self, city: str):
+#         # Mock implementation
+#         weather = {
+#             "Delhi": "34°C, Sunny",
+#             "Mumbai": "29°C, Rainy",
+#             "Pune": "27°C, Cloudy"
+#         }
+
+#         return ToolResult(
+#             success=True,
+#             output=weather.get(city, f"No weather data available for {city}.")
+#         )
+@_tool
+def weather(city: str) -> str:
+    """
+    Returns the current weather for a city.
+    This is a dummy implementation for testing the tool system.
+    """
+
+    weather_data = {
+        "mumbai": "30°C, Humid",
+        "delhi": "36°C, Sunny",
+        "pune": "26°C, Cloudy",
+        "bangalore": "24°C, Light Rain",
+        "hyderabad": "32°C, Clear",
+        "kolkata": "31°C, Thunderstorms",
+        "chennai": "33°C, Hot",
     }
 
-    def execute(self, city: str):
-        # Mock implementation
-        weather = {
-            "Delhi": "34°C, Sunny",
-            "Mumbai": "29°C, Rainy",
-            "Pune": "27°C, Cloudy"
-        }
-
-        return ToolResult(
-            success=True,
-            output=weather.get(city, f"No weather data available for {city}.")
-        )
+    return weather_data.get(
+        city.lower(),
+        f"Weather data for '{city}' is unavailable."
+    )
 
 
 model = GeminiModel(
     api_key="GEMINI_API_KEY",
-    model="gemini-2.5-flash"
+    model="gemma-4-26b-a4b-it"
 
 )
 
 agent = Toolagent(
     model=model,
     tools=[
-        WeatherTool()
+        weather
     ],
     cli_stream=True
 )
@@ -111,8 +132,9 @@ if st.button("Run Agent"):
 
     agent = Toolagent(
         model=model,
-        tools=[WeatherTool()],
+        tools=[weather],
         callback=streamlit_callback
     )
 
     response = agent.run(task)
+    st.write(response)

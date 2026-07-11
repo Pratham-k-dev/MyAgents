@@ -20,7 +20,7 @@ class BaseContextBuilder:
         raise NotImplementedError
 
 
-class GeminiContextBuilder(BaseContextBuilder):
+class ContextBuilder(BaseContextBuilder):
 
     ROLE_MAP = {
         "user": "user",

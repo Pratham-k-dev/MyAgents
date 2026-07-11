@@ -5,12 +5,18 @@ from datetime import datetime
 from typing import Optional
 
 
+# @dataclass
+# class Message:
+#     role: str
+#     content: str
+#     created_at: datetime
 @dataclass
 class Message:
+    id: int
+    session_id : str
     role: str
     content: str
     created_at: datetime
-
 
 @dataclass
 class Session:

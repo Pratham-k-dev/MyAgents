@@ -16,12 +16,14 @@ class DockerSandbox:
                 }
             },
             detach=True,
-            remove=True,
+            remove=False,
         )
 
         result = container.wait()
 
         logs = container.logs().decode()
+
+        container.remove()
 
         return {
             "exit_code": result["StatusCode"],
@@ -95,12 +97,17 @@ class Workspace:
         ]
 
 
-# workspace= Workspace("./WorkSpace")
 
 
 # workspace.write("main.py", "print('Hello')")
 # print(workspace.list_files())
 
+# result = sandbox.execute(workspace, "main.py")
+
+# print(result)
+
+# sandbox=DockerSandbox()
+# workspace= Workspace("./CodeAgent/Docker/WorkSpace")
 # result = sandbox.execute(workspace, "main.py")
 
 # print(result)

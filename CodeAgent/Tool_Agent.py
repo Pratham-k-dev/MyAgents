@@ -10,7 +10,7 @@ from enum import Enum
 from Memory.memory import ConversationMemory
 from Memory.store import SQLiteStore
 from Memory.context import ContextBuilder
-from Memory.optimizer import ContextOptimizer
+from Memory.optimizer import ContextOptimizer,Summarizer
 # class MockAction:
 #     def __init__(self):
 #         self.thought = "Write fibonacci to code.py"
@@ -89,9 +89,11 @@ class Toolagent:
         self.cli_stream=cli_stream
         self.callback = callback
         self.memory = ConversationMemory(
-            store=SQLiteStore(),
+            store=SQLiteStore(db_path="memory.db"),
             builder=ContextBuilder(),
-            optimizer=ContextOptimizer()
+            optimizer=ContextOptimizer(),
+            summarizer=Summarizer(),
+            session_id="my_id"
         )
         
     def _emit(self, event_type: EventType, data: Any):
@@ -139,34 +141,24 @@ class Toolagent:
 
     def run(self, task: str):
 
-        messages = [
-            {
-                "role": "system",
-                "content": self.system_prompt
-            },
-            {
-                "role": "user",
-                "content": task
-            }
-        ]
-        self.memory.add_message(
-                "user",
+        self.memory.add_user_message(
+                
                 task
             )
         for iteration in range(self.max_iterations):
             # gemini_messages = []
 
-            # for msg in messages:
-            #     gemini_messages.append(
-            #         {
-            #             "role": "user" if msg["role"] == "user" else "user",
-            #             "parts": [
-            #                 {
-            #                     "text": msg["content"]
-            #                 }
-            #             ]
-            #         }
-            #     )
+                # for msg in messages:
+                #     gemini_messages.append(
+                #         {
+                #             "role": "user" if msg["role"] == "user" else "user",
+                #             "parts": [
+                #                 {
+                #                     "text": msg["content"]
+                #                 }
+                #             ]
+                #         }
+                #     )
             gemini_messages = self.memory.build_context(
                 self.system_prompt
             )
@@ -190,10 +182,11 @@ class Toolagent:
                 action.thought
             )
             if action.final_answer:
-                self.memory.add_message(
-                    "assistant",
+                self.memory.add_assistant_message(
+                    
                     action.final_answer
                 )
+                self.memory.optimize(self.model)
                 return action.final_answer
 
             tool = self.tools.get(action.tool)
@@ -219,21 +212,22 @@ class Toolagent:
                         EventType.OBSERVATION,
                         observation,
                     )
+                    observation="toolresult: "+ observation.output
                 except Exception as e:
                     observation = str(e)
                     self._emit(
                         EventType.ERROR,
                         str(e),
                     )
-            self.memory.add_message(
-                "assistant",
+            self.memory.add_assistant_message(
+                
                 action.thought
             )
-            self.memory.add_message(
-                "tool",
+            self.memory.add_user_message(
                 observation
             )
-            self.memory.optimize()
+            self.memory.optimize(self.model)
+            
             # messages.append({
             #     "role":"assistant",
             #     "content":action.thought

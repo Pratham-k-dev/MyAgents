@@ -1,5 +1,8 @@
+#store.py
+
 import sqlite3
 from pathlib import Path
+from .schemas import Message
 class SQLiteStore:
 
     def __init__(self, db_path: str):
@@ -157,7 +160,19 @@ class SQLiteStore:
                 (session_id, limit)
             )
 
-        return cursor.fetchall()
+        rows = cursor.fetchall()
+
+        return [
+            Message(
+                id=row["id"],
+                session_id=row["session_id"],
+                role=row["role"],
+                content=row["content"],
+                created_at=row["created_at"],
+            )
+            for row in rows
+        ]
+        
 
     def delete_messages(
         self,

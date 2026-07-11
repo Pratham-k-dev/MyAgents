@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
 
+import inspect
+from typing import get_origin, get_args
+
 
 class ToolResult(BaseModel):
     success: bool
@@ -173,3 +176,67 @@ class DeleteFileTool(BaseTool):
             success=True,
             output=f"Successfully deleted '{path}'."
         )
+    
+class DecoratedTool(BaseTool):
+
+    def __init__(self, func):
+        self.func = func
+
+        self.name = func.__name__
+        self.description = inspect.getdoc(func) or ""
+
+        self.signature = inspect.signature(func)
+
+        self.parameters = self._build_schema()
+
+    def execute(self, **kwargs) -> ToolResult:
+
+        result = self.func(**kwargs)
+
+        if isinstance(result, ToolResult):
+            return result
+
+        return ToolResult(
+            success=True,
+            output=str(result),
+        )
+
+    def _build_schema(self):
+
+        properties = {}
+        required = []
+
+        for name, parameter in self.signature.parameters.items():
+
+            annotation = parameter.annotation
+
+            properties[name] = {
+                "type": self._python_to_json(annotation),
+                "description": f"{name} parameter"
+            }
+
+            if parameter.default is inspect.Parameter.empty:
+                required.append(name)
+
+        return {
+            "type": "object",
+            "properties": properties,
+            "required": required,
+        }
+
+    def _python_to_json(self, annotation):
+
+        mapping = {
+            str: "string",
+            int: "integer",
+            float: "number",
+            bool: "boolean",
+            list: "array",
+            dict: "object",
+        }
+
+        return mapping.get(annotation, "string")
+
+
+def _tool(func):
+    return DecoratedTool(func)
