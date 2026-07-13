@@ -2,12 +2,16 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel
 
 import inspect
-from typing import get_origin, get_args
+from typing import get_origin, get_args,Any
+
+
+import subprocess
+import sys
 
 
 class ToolResult(BaseModel):
     success: bool
-    output: str
+    output: Any
 
     def __str__(self):
         return self.output
@@ -30,9 +34,28 @@ class BaseTool(ABC):
         }
 
 
+
+
+class LocalRuntime:
+
+    def execute(self, workspace, entry):
+
+        process = subprocess.run(
+            [sys.executable, entry],
+            cwd=workspace.root,
+            capture_output=True,
+            text=True,
+        )
+
+        return {
+            "exit_code": process.returncode,
+            "output": process.stdout + process.stderr,
+        }
+
+
 class RunPythonTool(BaseTool):
     name = "run_python"
-    description = "Execute a Python file inside the sandbox."
+    description = "Execute a Python file locally."
 
     parameters = {
         "type": "object",
@@ -46,22 +69,21 @@ class RunPythonTool(BaseTool):
         "required": [],
     }
 
-    def __init__(self, workspace, sandbox):
+    def __init__(self, workspace, runtime):
         self.workspace = workspace
-        self.sandbox = sandbox
+        self.runtime = runtime
 
     def execute(self, entry="main.py") -> ToolResult:
-        result = self.sandbox.execute(
+
+        result = self.runtime.execute(
             self.workspace,
-            entry
+            entry,
         )
 
         return ToolResult(
-            success=result.exit_code == 0,
-            output=result.output
+            success=result["exit_code"] == 0,
+            output=result["output"],
         )
-
-
 class WriteFileTool(BaseTool):
     name = "write_file"
     description = "Create or overwrite a file."
@@ -198,7 +220,7 @@ class DecoratedTool(BaseTool):
 
         return ToolResult(
             success=True,
-            output=str(result),
+            output=(result),
         )
 
     def _build_schema(self):
@@ -240,3 +262,46 @@ class DecoratedTool(BaseTool):
 
 def _tool(func):
     return DecoratedTool(func)
+
+from ddgs import DDGS
+
+@_tool
+def duckduckgo_search(query: str, max_results: int = 5):
+    """
+    Search the web using DuckDuckGo.
+
+    Returns the top search results including title, URL and snippet.
+    """
+
+    with DDGS() as ddgs:
+        results = list(ddgs.text(query, max_results=max_results))
+
+    return results
+
+import requests
+from bs4 import BeautifulSoup
+
+@_tool
+def web_scrape(url: str):
+    """
+    Download and extract readable text from a webpage.
+    """
+
+    response = requests.get(
+        url,
+        timeout=10,
+        headers={
+            "User-Agent": "Mozilla/5.0"
+        }
+    )
+
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    return soup.get_text(
+        separator="\n",
+        strip=True
+    )
+
+
+
+

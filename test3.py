@@ -1,10 +1,11 @@
-from Tool_Agent import Toolagent
+from Code_Agent import CodeAgent
 from llms.gemini_model import GeminiModel
 from tools import BaseTool, ToolResult
 from dotenv import load_dotenv
 from tools import WriteFileTool,_tool
 from Docker.sandbox import Workspace
 import streamlit as st
+from toolModes import weather, calculator
 
 
 load_dotenv()
@@ -71,70 +72,73 @@ def streamlit_callback(event: AgentEvent):
 #             success=True,
 #             output=weather.get(city, f"No weather data available for {city}.")
 #         )
-@_tool
-def weather(city: str) -> str:
-    """
-    Returns the current weather for a city.
-    This is a dummy implementation for testing the tool system.
-    """
+# @_tool
+# def weather(city: str) -> str:
+#     """
+#     Returns the current weather for a city.
+#     This is a dummy implementation for testing the tool system.
+#     """
 
-    weather_data = {
-        "mumbai": "30°C, Humid",
-        "delhi": "36°C, Sunny",
-        "pune": "26°C, Cloudy",
-        "bangalore": "24°C, Light Rain",
-        "hyderabad": "32°C, Clear",
-        "kolkata": "31°C, Thunderstorms",
-        "chennai": "33°C, Hot",
-    }
+#     weather_data = {
+#         "mumbai": "30°C, Humid",
+#         "delhi": "36°C, Sunny",
+#         "pune": "26°C, Cloudy",
+#         "bangalore": "24°C, Light Rain",
+#         "hyderabad": "32°C, Clear",
+#         "kolkata": "31°C, Thunderstorms",
+#         "chennai": "33°C, Hot",
+#     }
 
-    return weather_data.get(
-        city.lower(),
-        f"Weather data for '{city}' is unavailable."
-    )
+#     return weather_data.get(
+#         city.lower(),
+#         f"Weather data for '{city}' is unavailable."
+#     )
 
 
 model = GeminiModel(
-    api_key="GEMINI_API_KEY",
+    api_key="",
     model="gemma-4-26b-a4b-it"
 
 )
 
-agent = Toolagent(
+agent = CodeAgent(
     model=model,
     tools=[
-        weather
+        weather,
+        calculator
     ],
-    cli_stream=True
+    cli_stream=True,
+    tool_paths=["C:\\web dev\\AI\\Agent-Framework\\toolModes.py"],
 )
 
-# response = agent.run(
-#     """
-#     Whats the weather in Pune?
-#     """
-# )
+response = agent.run(
+    """
+    What is (17 × 23) + (144 ÷ 12)? answer using the tools only not direct python code
+    """
+)
 
-# print(response)
+print(response)
 # workspace=Workspace("./CodeAgent/Docker/Workspace")
 # tool = WriteFileTool(workspace)
 # tool.execute(**{"path": "code.py", "content": "def fibonacci(n):\n a, b = 0, 1\n for _ in range(n):\n print(a, end=\" \")\n a, b = b, a + b\n print()\n\nif __name__ == \"__main__\":\n fibonacci(10)"} )
 
 
 
-st.title("ToolAgent Demo")
+# st.title("CodeAgent Demo")
 
-task = st.text_area(
-    "Task",
-    "What's the weather in Pune?"
-)
+# task = st.text_area(                                                    
+#     "Task",
+#     "What's the weather in Pune and Hyderabad?"
+# )
 
-if st.button("Run Agent"):
+# if st.button("Run Agent"):
 
-    agent = Toolagent(
-        model=model,
-        tools=[weather],
-        callback=streamlit_callback
-    )
+#     agent = CodeAgent(
+#         model=model,
+#         tools=[weather],
+#         tool_paths=[],
+#         callback=streamlit_callback
+#     )
 
-    response = agent.run(task)
-    st.write(response)
+#     response = agent.run(task)
+#     st.write(response)

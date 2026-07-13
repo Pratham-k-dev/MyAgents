@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field,ConfigDict
 
 
 
+
+
 class ToolCall(BaseModel):
     """Represents an action where the agent wants to execute a tool."""
     
@@ -59,3 +61,27 @@ class ToolResult(BaseModel):
     )
 
     metadata: str
+
+
+class CodeGeneration(BaseModel):
+    """Represents generated executable Python code."""
+
+    type: Literal["code"] = "code"
+
+    thought: str = Field(
+        description="Reasoning behind the generated code."
+    )
+
+    code: str = Field(
+        description="Executable Python code to be written into runtime.py."
+    )
+
+class CodeAgentAction(BaseModel):
+
+    type: Literal["code", "final"]
+
+    thought: str
+
+    code: str | None = None
+
+    final_answer: str | None = None

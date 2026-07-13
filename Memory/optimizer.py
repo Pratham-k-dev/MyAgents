@@ -68,7 +68,7 @@ Update the summary."""
 ],
             response_schema=SummaryResponse,
         )
-        print("executing:  " +msg.summary)
+        
         return msg.summary
 
 class ContextOptimizer:

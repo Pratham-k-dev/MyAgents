@@ -1,16 +1,16 @@
-from CodeAgent.Docker.sandbox import DockerSandbox,Workspace
-from CodeAgent.tools import RunPythonTool, ReadFileTool,WriteFileTool,AppendFileTool,DeleteFileTool
-from CodeAgent.prompt_builder import PromptBuilder
+from .workspace import Workspace
+from .tools import RunPythonTool, ReadFileTool,WriteFileTool,AppendFileTool,DeleteFileTool,LocalRuntime
+from .prompt_builder import PromptBuilder
 import time
 from google.genai.errors import ClientError
 import json
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 from enum import Enum
-from Memory.memory import ConversationMemory
-from Memory.store import SQLiteStore
-from Memory.context import ContextBuilder
-from Memory.optimizer import ContextOptimizer,Summarizer
+from .Memory.memory import ConversationMemory
+from .Memory.store import SQLiteStore
+from .Memory.context import ContextBuilder
+from .Memory.optimizer import ContextOptimizer,Summarizer
 # class MockAction:
 #     def __init__(self):
 #         self.thought = "Write fibonacci to code.py"
@@ -64,15 +64,16 @@ class Toolagent:
         callback=None
     ):
         self.model = model
-        self.workspace = Workspace("./CodeAgent/Docker/WorkSpace")
-        self.sandbox = DockerSandbox()
+        self.workspace = Workspace("./myagents/WorkSpace")
+        
         self.max_iterations = max_iterations
+        self.runtime=LocalRuntime()
         builtin_tools = [
             ReadFileTool(self.workspace),
             WriteFileTool(self.workspace),
             AppendFileTool(self.workspace),
             DeleteFileTool(self.workspace),
-            RunPythonTool(self.workspace, self.sandbox),
+            RunPythonTool(self.workspace,self.runtime),
         ]
         self.tools = {}
         for tool in builtin_tools:
@@ -89,7 +90,7 @@ class Toolagent:
         self.cli_stream=cli_stream
         self.callback = callback
         self.memory = ConversationMemory(
-            store=SQLiteStore(db_path="memory.db"),
+            store=SQLiteStore(db_path="./myagents/memory.db"),
             builder=ContextBuilder(),
             optimizer=ContextOptimizer(),
             summarizer=Summarizer(),
